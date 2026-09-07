@@ -1,0 +1,42 @@
+# ============================================================
+# 纯净chat沙盒 - 项目依赖库清单
+# ============================================================
+# 本文件列出了运行「纯净chat沙盒」程序所需的所有 Python 库。
+# 使用方法：在命令行中执行以下命令即可一键安装：
+#   pip install -r requirements.txt
+# ============================================================
+
+# 📦 Streamlit - 网页界面框架
+# 作用：把 Python 程序变成好看的网页界面（侧边栏、聊天框、按钮等）
+# 安装命令：pip install streamlit
+streamlit>=1.28.0
+
+# 📦 Google GenAI SDK - 谷歌 Gemini 模型接口
+# 作用：让程序能够调用 Google 的 Gemini AI 模型（如 gemini-2.5-pro）
+# 安装命令：pip install google-genai
+google-genai>=1.0.0
+
+# 📦 OpenAI SDK - 通用 AI 模型接口
+# 作用：让程序能够调用 SiliconFlow 和 DeepSeek 的 AI 模型
+# 安装命令：pip install openai
+openai>=1.0.0
+
+# 📦 Tavily Python - 联网搜索工具
+# 作用：让 AI 能够上网搜索实时信息（新闻、最新资料等）
+# 安装命令：pip install tavily-python
+tavily-python>=0.3.0
+
+# 📦 tiktoken - Token 计算器
+# 作用：精确计算一段文字包含多少个 Token（AI 的计费单位）
+# 安装命令：pip install tiktoken
+tiktoken>=0.5.0
+
+# 📦 PyMuPDF - PDF 文件阅读器
+# 作用：读取 PDF 文件中的文字内容，让 AI 能理解 PDF 附件
+# 安装命令：pip install pymupdf
+pymupdf>=1.23.0
+
+# 📦 requests - HTTP 请求库
+# 作用：用于调用博查(Bocha)搜索 API（HTTP POST 请求）
+# 安装命令：pip install requests
+requests>=2.31.0

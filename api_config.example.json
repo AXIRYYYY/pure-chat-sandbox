@@ -1,0 +1,86 @@
+{
+    "gemini": "YOUR_GEMINI_API_KEY",
+    "siliconflow": "YOUR_SILICONFLOW_API_KEY",
+    "tavily": "YOUR_TAVILY_API_KEY",
+    "deepseek": "YOUR_DEEPSEEK_API_KEY",
+    "bocha": "YOUR_BOCHA_API_KEY",
+    "ds_free_api_key": "",
+    "web_search": true,
+    "last_choice": "DeepSeek",
+    "last_model": "deepseek-v4-pro",
+    "system_prompt": "Your default system prompt. Configure per-workspace prompts below.",
+    "temperature": 0.5,
+    "top_p": 0.9,
+    "max_tokens": 18432,
+    "current_workspace": "default",
+    "workspace_titles": {
+        "workspace_default": "Default Sandbox",
+        "workspace_001": "Workspace 001",
+        "workspace_draft": "Draft"
+    },
+    "cache_ttl": 3600,
+    "gem_instruction": "",
+    "workspaces": [
+        "workspace_default",
+        "workspace_001",
+        "workspace_draft"
+    ],
+    "workspace_prefs": {
+        "workspace_default": {
+            "last_choice": "Gemini",
+            "last_model": "gemini-3.1-flash-lite-preview",
+            "platform_models": {
+                "Gemini": "gemini-3.1-flash-lite-preview"
+            },
+            "system_prompt": "Your custom system prompt here.",
+            "temperature": 0.5,
+            "top_p": 0.9,
+            "max_tokens": 10000
+        },
+        "workspace_001": {
+            "last_choice": "Gemini",
+            "last_model": "gemini-3.1-pro-preview",
+            "platform_models": {
+                "Gemini": "gemini-3.1-pro-preview"
+            },
+            "system_prompt": "Your custom system prompt here.",
+            "temperature": 0.5,
+            "top_p": 0.9,
+            "max_tokens": 18432
+        },
+        "workspace_draft": {
+            "last_choice": "Gemini",
+            "last_model": "gemini-3.1-flash-lite-preview",
+            "platform_models": {
+                "Gemini": "gemini-3.1-flash-lite-preview"
+            },
+            "system_prompt": "Your custom system prompt here.",
+            "temperature": 0.5,
+            "top_p": 0.9,
+            "max_tokens": 10000
+        }
+    },
+    "auto_name_triggered": false,
+    "auto_name_prefs": {
+        "enabled": false,
+        "channel": "SiliconFlow",
+        "model": "deepseek-ai/DeepSeek-V3"
+    },
+    "reasoning_effort": "medium",
+    "web_search_model": {
+        "SiliconFlow": "BAAI/bge-large-zh-v1.5",
+        "DeepSeek": "deepseek-v4-flash"
+    },
+    "api_retry_attempts": 10,
+    "web_search_suggestion_enabled": true,
+    "web_search_extract_config": {
+        "platform": "SiliconFlow",
+        "model": "Qwen/Qwen3-8B"
+    },
+    "search_engine": "Tavily",
+    "compression_defaults": {
+        "channel": "Gemini",
+        "model": "gemini-2.0-flash",
+        "prompt": "Your compression prompt here."
+    }
+}
