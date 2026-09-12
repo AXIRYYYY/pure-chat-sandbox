@@ -2,6 +2,14 @@
 
 所有对此项目的重大更改都将记录在此文件中。
 
+## [5.4.4] - 2026-09-12
+
+### 新增
+- **OpenCode Go 会话头支持**: `provider_registry.py` 的 `create_openai_client()` 支持 `default_headers`，`opencode-go` 预设自动注入稳定的 `x-opencode-session` 请求头（按工作区生成），修复 Go 网关 `MissingSessionID` 400 错误；非 Go 供应商不受影响。
+
+### 修复
+- **思考强度改为按模型判断**: 侧边栏「思考强度」与发送时的 `thinking`/`reasoning_effort` 参数，从硬编码 `model_choice == "DeepSeek"` 改为按模型 ID 是否含 `deepseek` 判断——任何通道下选中 DeepSeek 系模型（如 OpenCode Zen/Go、SiliconFlow 上的 deepseek-*）都可用；`deepseek-reasoner`/`deepseek-chat` 额外发送 `reasoning_effort`。
+
 ## [5.4.3] - 2026-09-12
 
 ### 新增

@@ -17,6 +17,7 @@
 """
 
 import time
+import json
 from datetime import datetime
 from google import genai
 from google.genai import types
@@ -216,7 +217,11 @@ def compress_messages_range(
 
     elif _is_openai_type(model_channel):
         from provider_registry import create_openai_client
-        client = create_openai_client(model_channel, api_key)
+        _session = api_configs.get("opencode_session") if isinstance(api_configs, dict) else None
+        if not _session and isinstance(api_configs, dict):
+            import hashlib
+            _session = f"ocg-{hashlib.md5(json.dumps(api_configs.get('current_workspace', 'default'), ensure_ascii=False).encode()).hexdigest()[:24]}"
+        client = create_openai_client(model_channel, api_key, _session)
         from chat_utils import retry_api_call
         resp = retry_api_call(
             lambda: client.chat.completions.create(

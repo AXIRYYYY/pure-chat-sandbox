@@ -52,6 +52,9 @@ BUILTIN_PROVIDERS = {
         "api_key_field": "opencode-go",
         "description": "OpenCode 订阅制模型网关 (精选模型子集，与 Zen 同协议、地址与 Key 不同)",
         "api_key_url": "https://opencode.ai/auth",
+        "default_headers": {
+            "x-opencode-session": "{session}",
+        },
     },
     "openai": {
         "name": "OpenAI",
@@ -309,13 +312,23 @@ def get_channel_display_name(provider_id):
 
 # —————————————————————————— OpenAI Client 工厂 ——————————————————————————
 
-def create_openai_client(provider_id, api_key):
+def create_openai_client(provider_id, api_key, session_id=None):
     info = get_provider_info(provider_id)
     if not info:
         return None
     base_url = info.get("api_host", "")
     if not base_url:
         return None
+    default_headers = info.get("default_headers")
+    if default_headers:
+        headers = {}
+        for k, v in default_headers.items():
+            if "{session}" in v and session_id:
+                headers[k] = v.replace("{session}", session_id)
+            elif "{session}" not in v:
+                headers[k] = v
+        if headers:
+            return OpenAI(api_key=api_key, base_url=base_url, default_headers=headers)
     return OpenAI(api_key=api_key, base_url=base_url)
 
 

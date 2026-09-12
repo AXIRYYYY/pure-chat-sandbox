@@ -111,7 +111,7 @@ def _get_round_mapping(messages):
 
 
 # --- 1. 版本号定义 ---
-__version__ = "5.4.3"
+__version__ = "5.4.4"
 
 # --- 2. 页面与状态管理 ---
 st.set_page_config(
@@ -189,6 +189,16 @@ if _auto_enabled:
 
 current_ws = st.session_state.api_configs.get("current_workspace", "默认沙盒 (Normal)")
 current_save_file = get_save_file_path(current_ws)
+
+
+def _opencode_session_id():
+    """按工作区生成稳定的 OpenCode Go session id（用于 x-opencode-session 请求头）。"""
+    import hashlib
+    _ws_key = f"opencode_session_{current_ws}"
+    if _ws_key not in st.session_state:
+        _seed = f"pure-chat-sandbox|{current_ws}"
+        st.session_state[_ws_key] = f"ocg-{hashlib.md5(_seed.encode()).hexdigest()[:24]}"
+    return st.session_state[_ws_key]
 
 if "messages" not in st.session_state:
     if os.path.exists(current_save_file):
@@ -457,7 +467,7 @@ with st.sidebar:
                         )
                         generated_name = _resp.text.strip()
                     elif is_openai_type(channel):
-                        _rc = create_openai_client(channel, _rn_key)
+                        _rc = create_openai_client(channel, _rn_key, _opencode_session_id())
                         _resp = _rc.chat.completions.create(
                             model=model,
                             messages=[
@@ -948,9 +958,9 @@ with st.sidebar:
             1024,
         )
 
-        # 🌟 新增：思考参数 (仅 DeepSeek 可用)
+        # 🌟 思考参数（模型 ID 含 deepseek 即可用，不限通道）
         reasoning_effort = "medium"
-        if model_choice == "DeepSeek":
+        if "deepseek" in target_model.lower():
             reasoning_effort = st.selectbox(
                 "思考强度 (Reasoning Effort)",
                 ["low", "medium", "high"],
@@ -2318,7 +2328,7 @@ if should_run:
                 if not provider_info or not provider_info.get("api_host"):
                     st.error(f"❌ 供应商 {model_choice} 缺少有效的 API 地址！")
                     st.stop()
-                client = create_openai_client(model_choice, _provider_key)
+                client = create_openai_client(model_choice, _provider_key, _opencode_session_id())
 
                 final_prompt = final_full_payload
                 search_context = None
@@ -2367,7 +2377,7 @@ if should_run:
                                 )
                             elif is_openai_type(extractor_platform):
                                 _ext_key = lookup_api_key(st.session_state.api_configs, extractor_platform)
-                                extractor_client = create_openai_client(extractor_platform, _ext_key)
+                                extractor_client = create_openai_client(extractor_platform, _ext_key, _opencode_session_id())
                             else:
                                 extractor_client = client
                                 extractor_model = target_model
@@ -2474,10 +2484,10 @@ if should_run:
                     "stream": True,
                     "stream_options": {"include_usage": True},
                 }
-                # DeepSeek 特有: 思考强度配置
-                if model_choice == "DeepSeek":
+                # DeepSeek 系模型: 思考强度配置（按模型 ID 判断，不限通道）
+                if "deepseek" in target_model.lower():
                     request_log_payload["extra_body"] = {"thinking": {"type": "enabled"}}
-                    if target_model == "deepseek-reasoner":
+                    if target_model in ("deepseek-reasoner", "deepseek-chat"):
                         request_log_payload["reasoning_effort"] = reasoning_effort
 
                 _display_name = get_channel_display_name(model_choice)
@@ -2739,7 +2749,7 @@ if should_run:
                                     )
                                     generated_name = _resp.text.strip()
                                 elif is_openai_type(channel):
-                                    _name_client = create_openai_client(channel, _name_key)
+                                    _name_client = create_openai_client(channel, _name_key, _opencode_session_id())
                                     _resp = _name_client.chat.completions.create(
                                         model=model,
                                         messages=[
