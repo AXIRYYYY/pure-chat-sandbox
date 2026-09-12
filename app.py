@@ -2505,6 +2505,9 @@ if should_run:
 
                 final_prompt = final_full_payload
                 search_context = None
+                browse_enabled = st.session_state.api_configs.get(
+                    "browse_enabled", False
+                )
                 has_cached = (
                     preserved_msg_id
                     and preserved_msg_id in st.session_state.get("search_cache", {})
@@ -2519,6 +2522,10 @@ if should_run:
                 )
                 if (
                     web_search
+                    and not browse_enabled
+                    and st.session_state.api_configs.get(
+                        "search_api_enabled", True
+                    )
                     and _search_api_key_available
                     and not is_gem_init
                     and (not is_rerun or not has_cached)
@@ -2646,6 +2653,103 @@ if should_run:
                                     f"{s['results']}\n\n{text_content}"
                                 )
                     messages_flow.append({"role": m["role"], "content": text_content})
+
+                # 🤖 AI 自主上网：边查边答预循环（OpenAI 兼容通道）
+                if browse_enabled and web_search:
+                    browse_max_rounds = int(
+                        st.session_state.api_configs.get("browse_max_rounds", 3)
+                    )
+                    msg_id = user_entry.get("msg_id")
+                    cached_browse = None
+                    if preserved_msg_id:
+                        _cache_entry = st.session_state.get(
+                            "search_cache", {}
+                        ).get(preserved_msg_id)
+                        if isinstance(_cache_entry, dict):
+                            cached_browse = _cache_entry.get("browse")
+
+                    if cached_browse:
+                        browse_context_text = browse_tools.format_browse_context(
+                            cached_browse.get("rounds", []), reused=True
+                        )
+                        st.caption(
+                            "🔁 已复用上次上网记录（未重新联网）；如需重新上网，请「直接重新生成」或编辑后发送"
+                        )
+                        if browse_context_text:
+                            final_prompt = (
+                                f"{browse_context_text}\n\n{final_prompt}"
+                            )
+                    else:
+                        # 基础上下文（system + 历史，不含当前问题）
+                        base_messages = list(messages_flow)
+                        if base_messages and base_messages[0]["role"] == "system":
+                            base_messages = [
+                                {
+                                    "role": "system",
+                                    "content": (
+                                        f"{base_messages[0]['content']}"
+                                        f"\n\n{browse_tools.BROWSE_PROMPT}"
+                                    ),
+                                }
+                            ] + base_messages[1:]
+                        else:
+                            base_messages = [
+                                {"role": "system", "content": browse_tools.BROWSE_PROMPT}
+                            ] + base_messages
+
+                        def openai_browse_call(msgs):
+                            resp = client.chat.completions.create(
+                                model=target_model,
+                                messages=msgs,
+                                max_tokens=300,
+                                temperature=temp,
+                                stream=False,
+                            )
+                            return resp.choices[0].message.content or ""
+
+                        with st.status(
+                            "🤖 AI 正在自主上网...", expanded=False
+                        ) as browse_status:
+                            browse_result = browse_tools.run_browse_loop(
+                                openai_browse_call,
+                                base_messages,
+                                prompt,
+                                st.session_state.api_configs,
+                                max_rounds=browse_max_rounds,
+                                retry_attempts=retry_attempts,
+                                status=browse_status,
+                                allow_api_search=st.session_state.api_configs.get(
+                                    "search_api_enabled", True
+                                ),
+                            )
+                        browse_rounds = browse_result["rounds"]
+                        if browse_rounds:
+                            if "search_cache" not in st.session_state:
+                                st.session_state.search_cache = {}
+                            if msg_id not in st.session_state.search_cache:
+                                st.session_state.search_cache[msg_id] = {
+                                    "question": prompt,
+                                    "searches": [],
+                                }
+                            st.session_state.search_cache[msg_id]["browse"] = {
+                                "question": prompt,
+                                "rounds": browse_rounds,
+                            }
+                        browse_context_text = browse_tools.format_browse_context(
+                            browse_rounds
+                        )
+                        if browse_context_text:
+                            final_prompt = (
+                                f"{browse_context_text}\n\n{final_prompt}"
+                            )
+                        elif browse_result.get("error"):
+                            # 🌟 联网尝试失败：明确告知 AI 是系统联网失败，而非它没有能力
+                            final_prompt = (
+                                f"【系统提示】本次 AI 自主上网尝试失败"
+                                f"（{browse_result['error']}），"
+                                f"请基于本地知识回答。\n\n{final_prompt}"
+                            )
+
                 messages_flow.append({"role": "user", "content": final_prompt})
 
                 request_log_payload = {
