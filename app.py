@@ -2287,6 +2287,9 @@ if should_run:
                 }
 
                 active_cache = st.session_state.get("active_gemini_cache")
+                browse_enabled = st.session_state.api_configs.get(
+                    "browse_enabled", False
+                )
                 if active_cache:
                     config_params["cached_content"] = active_cache
                 else:
@@ -2294,7 +2297,13 @@ if should_run:
                         config_params["system_instruction"] = (
                             get_effective_system_prompt(sys_prompt)
                         )
-                    if web_search:
+                    if (
+                        web_search
+                        and not browse_enabled
+                        and st.session_state.api_configs.get(
+                            "search_api_enabled", True
+                        )
+                    ):
                         google_search_tool = types.Tool(
                             google_search=types.GoogleSearch()
                         )
@@ -2325,6 +2334,124 @@ if should_run:
                             {"role": role, "parts": [{"text": text_content}]}
                         )
                         last_role = role
+
+                # 🤖 AI 自主上网：边查边答预循环（Gemini 通道）
+                if browse_enabled and web_search:
+                    browse_max_rounds = int(
+                        st.session_state.api_configs.get("browse_max_rounds", 3)
+                    )
+                    msg_id = user_entry.get("msg_id")
+                    cached_browse = None
+                    if preserved_msg_id:
+                        _cache_entry = st.session_state.get(
+                            "search_cache", {}
+                        ).get(preserved_msg_id)
+                        if isinstance(_cache_entry, dict):
+                            cached_browse = _cache_entry.get("browse")
+
+                    if cached_browse:
+                        browse_context_text = browse_tools.format_browse_context(
+                            cached_browse.get("rounds", []), reused=True
+                        )
+                        st.caption(
+                            "🔁 已复用上次上网记录（未重新联网）；如需重新上网，请「直接重新生成」或编辑后发送"
+                        )
+                        if browse_context_text:
+                            final_full_payload = (
+                                f"{browse_context_text}\n\n{final_full_payload}"
+                            )
+                    else:
+                        # 预循环配置：小输出上限 + 注入上网指令
+                        pre_config_params = dict(config_params)
+                        pre_config_params["max_output_tokens"] = 300
+                        if "system_instruction" in pre_config_params:
+                            pre_config_params["system_instruction"] = (
+                                f"{pre_config_params['system_instruction']}"
+                                f"\n\n{browse_tools.BROWSE_PROMPT}"
+                            )
+                        pre_config = types.GenerateContentConfig(**pre_config_params)
+
+                        # 基础上下文（OpenAI 格式）供循环复用
+                        base_messages = [
+                            {
+                                "role": "user" if h["role"] == "user" else "assistant",
+                                "content": h["parts"][0]["text"],
+                            }
+                            for h in history
+                        ]
+
+                        def gemini_browse_call(msgs):
+                            contents = []
+                            for m in msgs:
+                                role = "user" if m["role"] != "assistant" else "model"
+                                text = m.get("content", "")
+                                if not text or not text.strip():
+                                    text = " "
+                                if not contents and role == "model":
+                                    contents.append(
+                                        {"role": "user", "parts": [{"text": "[System Init]"}]}
+                                    )
+                                if contents and contents[-1]["role"] == role:
+                                    contents[-1]["parts"][0]["text"] += f"\n\n{text}"
+                                else:
+                                    contents.append(
+                                        {"role": role, "parts": [{"text": text}]}
+                                    )
+                            # 缓存模式下无 system_instruction → 上网指令追加到
+                            # 消息末尾（当前问题之后），不触碰缓存前缀，命中率不受影响
+                            if "system_instruction" not in pre_config_params:
+                                contents[-1]["parts"][0]["text"] += (
+                                    f"\n\n{browse_tools.BROWSE_PROMPT}"
+                                )
+                            resp = client.models.generate_content(
+                                model=normalize_gemini_model(target_model),
+                                contents=contents,
+                                config=pre_config,
+                            )
+                            return resp.text or ""
+
+                        with st.status(
+                            "🤖 AI 正在自主上网...", expanded=False
+                        ) as browse_status:
+                            browse_result = browse_tools.run_browse_loop(
+                                gemini_browse_call,
+                                base_messages,
+                                prompt,
+                                st.session_state.api_configs,
+                                max_rounds=browse_max_rounds,
+                                retry_attempts=retry_attempts,
+                                status=browse_status,
+                                allow_api_search=st.session_state.api_configs.get(
+                                    "search_api_enabled", True
+                                ),
+                            )
+                        browse_rounds = browse_result["rounds"]
+                        if browse_rounds:
+                            if "search_cache" not in st.session_state:
+                                st.session_state.search_cache = {}
+                            if msg_id not in st.session_state.search_cache:
+                                st.session_state.search_cache[msg_id] = {
+                                    "question": prompt,
+                                    "searches": [],
+                                }
+                            st.session_state.search_cache[msg_id]["browse"] = {
+                                "question": prompt,
+                                "rounds": browse_rounds,
+                            }
+                        browse_context_text = browse_tools.format_browse_context(
+                            browse_rounds
+                        )
+                        if browse_context_text:
+                            final_full_payload = (
+                                f"{browse_context_text}\n\n{final_full_payload}"
+                            )
+                        elif browse_result.get("error"):
+                            # 🌟 联网尝试失败：明确告知 AI 是系统联网失败，而非它没有能力
+                            final_full_payload = (
+                                f"【系统提示】本次 AI 自主上网尝试失败"
+                                f"（{browse_result['error']}），"
+                                f"请基于本地知识回答。\n\n{final_full_payload}"
+                            )
 
                 # --- 捕获请求日志 ---
                 request_log_payload = {
