@@ -1608,13 +1608,16 @@ def get_effective_system_prompt(base_prompt):
         sep = "\n\n" if effective_prompt.strip() else ""
         effective_prompt = f"{effective_prompt}{sep}【Gem 固定要求】\n{gem_inst}"
 
-    # 联网搜索建议指令
+    # 联网搜索建议指令（AI 自主上网开启时不追加，避免 AI 混用两套上网标记）
     SEARCH_SUGGESTION_INSTRUCTION = (
         "如果搜索结果不完整或需要更多信息，请在回答末尾添加"
         "【联网搜索建议：关键词1,关键词2】的格式明确告诉我需要搜索什么。"
     )
 
-    if st.session_state.api_configs.get("web_search_suggestion_enabled", False):
+    if (
+        st.session_state.api_configs.get("web_search_suggestion_enabled", False)
+        and not st.session_state.api_configs.get("browse_enabled", False)
+    ):
         if SEARCH_SUGGESTION_INSTRUCTION not in effective_prompt:
             # 在末尾优雅追加，保持分隔
             separator = "\n\n" if effective_prompt.strip() else ""
@@ -1853,6 +1856,15 @@ if "edit_state" in st.session_state:
             new_msg["content"] = final_prompt_text
             new_msg["raw_payload"] = full_payload
             new_msg["full_payload"] = full_payload
+
+            # 🌟 编辑内容有变化时，清除该消息的搜索/上网缓存，避免复用旧记录
+            #    （问题变了，旧搜索结果与上网过程不再适用）
+            if state["type"] == "rerun":
+                old_msg_id = state["msg"].get("msg_id")
+                if old_msg_id and final_prompt_text.strip() != user_text.strip():
+                    _sc = st.session_state.get("search_cache", {})
+                    if old_msg_id in _sc:
+                        _sc.pop(old_msg_id, None)
 
             st.session_state.trigger_rerun = new_msg
             del st.session_state.edit_state
