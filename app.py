@@ -557,9 +557,9 @@ with st.sidebar:
                         "attach_names": gem_attach_names,
                     }
 
-            st.session_state.api_configs["gem_instruction"] = gem_instruction
-            save_config(st.session_state.api_configs)
-            st.rerun()
+                    st.session_state.api_configs["gem_instruction"] = gem_instruction
+                    save_config(st.session_state.api_configs)
+                    st.rerun()
 
     # --- 上下文压缩（折叠，紧随案例属性区） ---
     _comp_has_ranges = bool(
