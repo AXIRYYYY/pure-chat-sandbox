@@ -111,7 +111,7 @@ def _get_round_mapping(messages):
 
 
 # --- 1. 版本号定义 ---
-__version__ = "5.4.1"
+__version__ = "5.4.2"
 
 # --- 2. 页面与状态管理 ---
 st.set_page_config(

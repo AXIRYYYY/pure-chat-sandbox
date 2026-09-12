@@ -2,6 +2,23 @@
 
 所有对此项目的重大更改都将记录在此文件中。
 
+## [5.4.2] - 2026-09-12
+
+### 新增
+- **OpenCode Go 供应商预设**: `provider_registry.py` 新增 `opencode-go` 条目（`https://opencode.ai/zen/go/v1`，独立 Key 位），与 Zen 同协议、地址与 Key 不同；模型拉取走通用 `/models` 探测，零额外改动。
+
+### 优化
+- **README 特性区开头新增“与常见对话页的区别”**: 点名中间段多区间可逆压缩、对比 Tabs 复用搜索缓存、供应商与模型全动态、搜索结果独立缓存、缓存前缀稳定保障 5 项差异。
+- **压缩措辞强化**: 明确“任意连续区间（含中间段）”与“多区间并存（如 2-4 轮与 6-8 轮）”。
+- **核心特性分组详述**: 从 10 条一句话扩为 7 组 27 条，覆盖压缩/对比/多供应商/审计等此前零覆盖功能；修正 4 处过时表述；streamlit 徽标与 requirements 对齐。
+- **热门供应商卡片折叠**: 开关关闭的供应商折叠收起，启用的展开，状态按注册表每轮重算。
+- **Key 设置去重**: 移除顶部与供应商卡片重复的 Gemini/SiliconFlow/DeepSeek 输入框，顶部仅保留 Tavily/博查并改名为“联网搜索 Key 设置”，统一保存按钮不变。
+
+### 修复
+- **删除模板孤儿字段**: `api_config.example.json` 移除零代码读取的 `ds_free_api_key` 与 `cache_ttl`。
+- **`config_manager.py` 默认值补齐**: 新增 `search_engine` / `reasoning_effort` / `web_search_extract_config` / `compression_defaults`，取值与代码 `.get()` 兜底一致。
+- **提取模型帮助文案**: 不再写死 Tavily，改为“当前选择的搜索引擎”。
+
 ## [5.4.1] - 2026-09-07
 
 ### 开源发布准备
