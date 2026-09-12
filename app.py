@@ -1664,7 +1664,13 @@ _search_api_key_available = (
 )
 if (
     web_search
-    and _search_api_key_available
+    and (
+        st.session_state.api_configs.get("browse_enabled", False)
+        or (
+            st.session_state.api_configs.get("search_api_enabled", True)
+            and _search_api_key_available
+        )
+    )
     and len(st.session_state.messages) >= 2
     and st.session_state.messages[-1]["role"] == "assistant"
     and is_openai_type(model_choice)
@@ -1678,7 +1684,11 @@ if (
         st.session_state.messages[-1].get("content", "")
     )
 
-    if ai_suggested_keywords and not st.session_state.get("ai_suggestion_ignored"):
+    if (
+        ai_suggested_keywords
+        and not st.session_state.get("ai_suggestion_ignored")
+        and not st.session_state.api_configs.get("browse_enabled", False)
+    ):
         # ── 情况 A：AI 主动建议了搜索关键词 ──
         # 显示 AI 建议的关键词 + 确认按钮
         st.info(f"🤖 **AI 建议联网搜索：** `{ai_suggested_keywords}`")
@@ -2041,8 +2051,13 @@ if should_run:
                     last_user_msg = st.session_state.messages[-2]
 
                     # 2. 用 AI 建议的关键词进行新搜索（根据搜索引擎选择）
+                    #    🌟 防御：若「搜索引擎」开关已关闭（旧 trigger 残留），降级必应网页版，不消耗 API
                     _search_engine = st.session_state.api_configs.get("search_engine", "Tavily")
-                    if _search_engine == "Tavily":
+                    if not st.session_state.api_configs.get("search_api_enabled", True):
+                        _src, new_search_context, _results_count = (
+                            browse_tools._search_bing(trigger_additional_search, 8)
+                        )
+                    elif _search_engine == "Tavily":
                         # Tavily 搜索
                         search_res = TavilyClient(
                             api_key=st.session_state.api_configs["tavily"]
