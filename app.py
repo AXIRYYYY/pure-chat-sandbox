@@ -1676,52 +1676,53 @@ if (
     and is_openai_type(model_choice)
 ):
     st.divider()
-    st.subheader("🔗 多次联网功能")
+    with st.container(border=True):
+        st.subheader("🔗 多次联网功能")
 
-    # ----- 检测 AI 回答中是否包含联网搜索建议 -----
-    # 扫描最后一条 AI 回答，看是否有 【联网搜索建议：关键词】 格式的标记
-    ai_suggested_keywords = extract_ai_search_suggestion(
-        st.session_state.messages[-1].get("content", "")
-    )
+        # ----- 检测 AI 回答中是否包含联网搜索建议 -----
+        # 扫描最后一条 AI 回答，看是否有 【联网搜索建议：关键词】 格式的标记
+        ai_suggested_keywords = extract_ai_search_suggestion(
+            st.session_state.messages[-1].get("content", "")
+        )
 
-    if (
-        ai_suggested_keywords
-        and not st.session_state.get("ai_suggestion_ignored")
-        and not st.session_state.api_configs.get("browse_enabled", False)
-    ):
-        # ── 情况 A：AI 主动建议了搜索关键词 ──
-        # 显示 AI 建议的关键词 + 确认按钮
-        st.info(f"🤖 **AI 建议联网搜索：** `{ai_suggested_keywords}`")
+        if (
+            ai_suggested_keywords
+            and not st.session_state.get("ai_suggestion_ignored")
+            and not st.session_state.api_configs.get("browse_enabled", False)
+        ):
+            # ── 情况 A：AI 主动建议了搜索关键词 ──
+            # 显示 AI 建议的关键词 + 确认按钮
+            st.info(f"🤖 **AI 建议联网搜索：** `{ai_suggested_keywords}`")
 
-        col_agree, col_ignore = st.columns([1, 1])
-        with col_agree:
-            if st.button("✅ 同意搜索", use_container_width=True, type="primary"):
-                # 标记为"AI 建议"来源，触发处理逻辑中的路径A（重生成）
-                st.session_state.search_source = "ai_suggested"
-                st.session_state.trigger_additional_search = ai_suggested_keywords
-                st.rerun()
-        with col_ignore:
-            if st.button("❌ 忽略", use_container_width=True):
-                # 用户忽略 AI 建议，清除建议状态，下次 rerun 不再显示
-                st.session_state.ai_suggestion_ignored = True
-                st.rerun()
-    else:
-        # ── 情况 B：AI 没有建议，显示手动输入框 ──
-        col_input, col_btn = st.columns([4, 1])
-        with col_input:
-            additional_keywords = st.text_input(
-                "输入新的搜索关键词进行再次联网 (可选)",
-                placeholder="例如：最新发展、补充信息、其他方面...",
-            )
-        with col_btn:
-            if st.button("🔎 再次联网", use_container_width=True):
-                if additional_keywords.strip():
-                    # 标记为"手动"来源，触发处理逻辑中的路径B（新增独立回答）
-                    st.session_state.search_source = "manual"
-                    st.session_state.trigger_additional_search = additional_keywords
+            col_agree, col_ignore = st.columns([1, 1])
+            with col_agree:
+                if st.button("✅ 同意搜索", use_container_width=True, type="primary"):
+                    # 标记为"AI 建议"来源，触发处理逻辑中的路径A（重生成）
+                    st.session_state.search_source = "ai_suggested"
+                    st.session_state.trigger_additional_search = ai_suggested_keywords
                     st.rerun()
-                else:
-                    st.warning("请输入搜索关键词")
+            with col_ignore:
+                if st.button("❌ 忽略", use_container_width=True):
+                    # 用户忽略 AI 建议，清除建议状态，下次 rerun 不再显示
+                    st.session_state.ai_suggestion_ignored = True
+                    st.rerun()
+        else:
+            # ── 情况 B：AI 没有建议，显示手动输入框 ──
+            col_input, col_btn = st.columns([4, 1])
+            with col_input:
+                additional_keywords = st.text_input(
+                    "输入新的搜索关键词进行再次联网 (可选)",
+                    placeholder="例如：最新发展、补充信息、其他方面...",
+                )
+            with col_btn:
+                if st.button("🔎 再次联网", use_container_width=True):
+                    if additional_keywords.strip():
+                        # 标记为"手动"来源，触发处理逻辑中的路径B（新增独立回答）
+                        st.session_state.search_source = "manual"
+                        st.session_state.trigger_additional_search = additional_keywords
+                        st.rerun()
+                    else:
+                        st.warning("请输入搜索关键词")
 
 # --- 5. 核心推理：新版 SDK 适配 ---
 # --- 修改：将 Token 测算改为手动触发 ---
