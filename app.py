@@ -557,9 +557,245 @@ with st.sidebar:
                         "attach_names": gem_attach_names,
                     }
 
-                    st.session_state.api_configs["gem_instruction"] = gem_instruction
-                    save_config(st.session_state.api_configs)
-                    st.rerun()
+            st.session_state.api_configs["gem_instruction"] = gem_instruction
+            save_config(st.session_state.api_configs)
+            st.rerun()
+
+    st.divider()
+
+    # --- 上下文压缩（折叠，紧随案例属性区） ---
+    _comp_has_ranges = bool(
+        st.session_state.get("compression_state", {}).get("ranges", [])
+    )
+    with st.expander("🧹 上下文压缩", expanded=_comp_has_ranges):
+        comp_defaults = st.session_state.api_configs.get("compression_defaults", {})
+
+        with st.expander("⚙️ 压缩配置", expanded=False):
+            comp_prompt = st.text_area(
+                "压缩提示词",
+                value=comp_defaults.get(
+                    "prompt",
+                    "请用中文简要总结以下对话的核心内容和技术要点，保留关键决策和代码片段要点。",
+                ),
+                height=150,
+                help="此提示词将被发送给压缩模型，指导其如何总结对话。",
+            )
+
+            comp_ch_ids = get_visible_channels(st.session_state.api_configs)
+            if not comp_ch_ids:
+                comp_ch_ids = ["Gemini", "SiliconFlow"]
+            comp_ch_labels = [get_channel_display_name(pid) for pid in comp_ch_ids]
+            comp_ch = comp_defaults.get("channel", "Gemini")
+            comp_def_idx = comp_ch_ids.index(comp_ch) if comp_ch in comp_ch_ids else 0
+            comp_channel = comp_ch_ids[
+                comp_ch_labels.index(
+                    st.selectbox(
+                        "压缩模型通道",
+                        comp_ch_labels,
+                        index=comp_def_idx,
+                        key="comp_chan",
+                    )
+                )
+            ]
+
+            comp_opts = st.session_state.model_config.get(comp_channel, [])
+            if os.path.exists("enabled_models.json"):
+                with open("enabled_models.json", "r", encoding="utf-8") as f:
+                    comp_enabled = json.load(f)
+                comp_extra = comp_enabled.get(comp_channel, [])
+                comp_opts = list(set(comp_opts + comp_extra))
+                comp_opts.sort()
+            if "自定义..." not in comp_opts:
+                comp_opts.insert(0, "自定义...")
+            if not comp_opts:
+                comp_opts = ["自定义..."]
+
+            comp_m = comp_defaults.get("model", comp_opts[0] if comp_opts else "gemini-2.0-flash")
+            comp_m_idx = comp_opts.index(comp_m) if comp_m in comp_opts else 0
+            comp_model = st.selectbox(
+                "压缩模型", comp_opts, index=comp_m_idx, key="comp_model_sel"
+            )
+            if comp_model == "自定义...":
+                comp_model = st.text_input(
+                    "手动输入压缩模型ID",
+                    value=comp_defaults.get("model", ""),
+                    key="comp_model_custom",
+                )
+
+            if st.button("💾 保存压缩配置", use_container_width=True):
+                st.session_state.api_configs["compression_defaults"] = {
+                    "channel": comp_channel,
+                    "model": comp_model,
+                    "prompt": comp_prompt,
+                }
+                save_config(st.session_state.api_configs)
+                st.toast("✅ 压缩配置已保存")
+
+        rounds = _get_round_mapping(st.session_state.messages)
+        if rounds:
+            round_options = [f"第{rn}轮: {preview}" for rn, idx, preview in rounds]
+            start_sel = st.selectbox(
+                "压缩起始轮次", round_options, key="comp_start"
+            )
+            end_default_idx = round_options.index(start_sel)
+            end_sel = st.selectbox(
+                "压缩结束轮次",
+                round_options[end_default_idx:],
+                key="comp_end",
+            )
+
+            start_rn_str = start_sel.split(":")[0]
+            end_rn_str = end_sel.split(":")[0]
+            start_rn = int(start_rn_str.replace("第", "").replace("轮", ""))
+            end_rn = int(end_rn_str.replace("第", "").replace("轮", ""))
+
+            start_i = None
+            end_i = None
+            for rn, idx, _ in rounds:
+                if rn == start_rn:
+                    start_i = idx
+                if rn == end_rn:
+                    end_i = idx
+                    if (
+                        end_i + 1 < len(st.session_state.messages)
+                        and st.session_state.messages[end_i + 1]["role"] == "assistant"
+                    ):
+                        end_i = end_i + 1
+
+            if start_i is not None and end_i is not None:
+                msg_ids_to_compress = [
+                    st.session_state.messages[j]["msg_id"]
+                    for j in range(start_i, end_i + 1)
+                    if "msg_id" in st.session_state.messages[j]
+                ]
+                has_overlap, conflict_id = check_range_overlap(
+                    st.session_state.compression_state, msg_ids_to_compress
+                )
+
+                count = end_i - start_i + 1
+                st.caption(f"将压缩 {count} 条消息 (第{start_rn}-{end_rn}轮)")
+
+                if has_overlap:
+                    st.warning(f"⚠️ 所选区间与已有压缩区间 ({conflict_id}) 重叠，请调整范围。")
+                elif st.button("🚀 执行压缩", type="primary", use_container_width=True):
+                    with st.spinner(f"正在使用 {comp_channel}/{comp_model} 压缩对话..."):
+                        try:
+                            summary = compress_messages_range(
+                                st.session_state.messages,
+                                start_i,
+                                end_i,
+                                comp_prompt,
+                                comp_channel,
+                                comp_model,
+                                st.session_state.api_configs,
+                            )
+                            add_compression_range(
+                                st.session_state.compression_state,
+                                msg_ids_to_compress,
+                                summary,
+                                comp_channel,
+                                comp_model,
+                                comp_prompt,
+                            )
+                            save_chat_history(
+                                current_save_file,
+                                st.session_state.messages,
+                                st.session_state.get("search_cache", {}),
+                            )
+                            st.toast(f"✅ 已压缩第{start_rn}-{end_rn}轮对话")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"压缩失败: {e}")
+
+        cs = st.session_state.compression_state
+        if cs.get("ranges"):
+            st.divider()
+            st.caption(f"已压缩 {len(cs['ranges'])} 个区间")
+            for r in cs["ranges"]:
+                with st.expander(f"📦 {len(r['msg_ids'])} 条消息"):
+                    st.caption(f"模型: {r.get('model', 'N/A')}")
+                    st.caption(f"提示词: {r.get('prompt', '')[:80]}...")
+                    st.info(r["summary"])
+                    if st.button(
+                        "🗑️ 取消此压缩",
+                        key=f"uncmp_{r['id']}",
+                        use_container_width=True,
+                    ):
+                        remove_compression_range(
+                            st.session_state.compression_state, r["id"]
+                        )
+                        save_chat_history(
+                            current_save_file,
+                            st.session_state.messages,
+                            st.session_state.get("search_cache", {}),
+                        )
+                        st.rerun()
+        else:
+            st.caption("暂无压缩区间")
+
+    # --- 对话索引 ---
+    st.divider()
+    st.subheader("📋 对话索引")
+
+    idx_rounds = _get_round_mapping(st.session_state.messages)
+    if idx_rounds:
+        cs2 = st.session_state.compression_state
+        compressed_ids = get_compressed_msg_ids(cs2)
+
+        with st.expander("对话轮次导航", expanded=len(idx_rounds) <= 10):
+            i = 0
+            while i < len(idx_rounds):
+                rn, idx, preview = idx_rounds[i]
+                mid = st.session_state.messages[idx].get("msg_id", "")
+
+                if mid in compressed_ids:
+                    cur_range = None
+                    for r in cs2.get("ranges", []):
+                        if mid in r["msg_ids"]:
+                            cur_range = r
+                            break
+
+                    if cur_range:
+                        comp_rnds = []
+                        j = i
+                        while j < len(idx_rounds):
+                            crn, cidx, cprev = idx_rounds[j]
+                            cmid = st.session_state.messages[cidx].get("msg_id", "")
+                            if cmid in cur_range["msg_ids"]:
+                                comp_rnds.append((crn, cidx, cprev))
+                                j += 1
+                            else:
+                                break
+
+                        first_rn = comp_rnds[0][0]
+                        last_rn = comp_rnds[-1][0]
+                        with st.expander(f"📦 已压缩 (第{first_rn}-{last_rn}轮)"):
+                            for crn, cidx, cprev in comp_rnds:
+                                short = (
+                                    cprev[:30] + "..."
+                                    if len(cprev) > 30
+                                    else cprev
+                                )
+                                st.markdown(
+                                    f'<a href="#turn_{cidx}" title="{cprev}">第{crn}轮: {short}</a>',
+                                    unsafe_allow_html=True,
+                                )
+                            summ = cur_range.get("summary", "")
+                            st.info(
+                                summ[:150]
+                                + ("..." if len(summ) > 150 else "")
+                            )
+                        i = j
+                        continue
+
+                short = preview[:30] + "..." if len(preview) > 30 else preview
+                st.markdown(
+                    f'<a href="#turn_{idx}" title="{preview}">第{rn}轮: {short}</a>',
+                    unsafe_allow_html=True,
+                )
+                i += 1
+    else:
+        st.caption("暂无对话")
 
     # st.divider()
 
@@ -1011,238 +1247,7 @@ with st.sidebar:
         clear_transient_states()
         st.rerun()
 
-    # --- 上下文压缩 ---
     st.divider()
-    st.subheader("🧹 上下文压缩")
-
-    comp_defaults = st.session_state.api_configs.get("compression_defaults", {})
-
-    with st.expander("⚙️ 压缩配置", expanded=False):
-        comp_prompt = st.text_area(
-            "压缩提示词",
-            value=comp_defaults.get(
-                "prompt",
-                "请用中文简要总结以下对话的核心内容和技术要点，保留关键决策和代码片段要点。",
-            ),
-            height=150,
-            help="此提示词将被发送给压缩模型，指导其如何总结对话。",
-        )
-
-        comp_ch_ids = get_visible_channels(st.session_state.api_configs)
-        if not comp_ch_ids:
-            comp_ch_ids = ["Gemini", "SiliconFlow"]
-        comp_ch_labels = [get_channel_display_name(pid) for pid in comp_ch_ids]
-        comp_ch = comp_defaults.get("channel", "Gemini")
-        comp_def_idx = comp_ch_ids.index(comp_ch) if comp_ch in comp_ch_ids else 0
-        comp_channel = comp_ch_ids[
-            comp_ch_labels.index(
-                st.selectbox(
-                    "压缩模型通道",
-                    comp_ch_labels,
-                    index=comp_def_idx,
-                    key="comp_chan",
-                )
-            )
-        ]
-
-        comp_opts = st.session_state.model_config.get(comp_channel, [])
-        if os.path.exists("enabled_models.json"):
-            with open("enabled_models.json", "r", encoding="utf-8") as f:
-                comp_enabled = json.load(f)
-            comp_extra = comp_enabled.get(comp_channel, [])
-            comp_opts = list(set(comp_opts + comp_extra))
-            comp_opts.sort()
-        if "自定义..." not in comp_opts:
-            comp_opts.insert(0, "自定义...")
-        if not comp_opts:
-            comp_opts = ["自定义..."]
-
-        comp_m = comp_defaults.get("model", comp_opts[0] if comp_opts else "gemini-2.0-flash")
-        comp_m_idx = comp_opts.index(comp_m) if comp_m in comp_opts else 0
-        comp_model = st.selectbox(
-            "压缩模型", comp_opts, index=comp_m_idx, key="comp_model_sel"
-        )
-        if comp_model == "自定义...":
-            comp_model = st.text_input(
-                "手动输入压缩模型ID",
-                value=comp_defaults.get("model", ""),
-                key="comp_model_custom",
-            )
-
-        if st.button("💾 保存压缩配置", use_container_width=True):
-            st.session_state.api_configs["compression_defaults"] = {
-                "channel": comp_channel,
-                "model": comp_model,
-                "prompt": comp_prompt,
-            }
-            save_config(st.session_state.api_configs)
-            st.toast("✅ 压缩配置已保存")
-
-    rounds = _get_round_mapping(st.session_state.messages)
-    if rounds:
-        round_options = [f"第{rn}轮: {preview}" for rn, idx, preview in rounds]
-        start_sel = st.selectbox(
-            "压缩起始轮次", round_options, key="comp_start"
-        )
-        end_default_idx = round_options.index(start_sel)
-        end_sel = st.selectbox(
-            "压缩结束轮次",
-            round_options[end_default_idx:],
-            key="comp_end",
-        )
-
-        start_rn_str = start_sel.split(":")[0]
-        end_rn_str = end_sel.split(":")[0]
-        start_rn = int(start_rn_str.replace("第", "").replace("轮", ""))
-        end_rn = int(end_rn_str.replace("第", "").replace("轮", ""))
-
-        start_i = None
-        end_i = None
-        for rn, idx, _ in rounds:
-            if rn == start_rn:
-                start_i = idx
-            if rn == end_rn:
-                end_i = idx
-                if (
-                    end_i + 1 < len(st.session_state.messages)
-                    and st.session_state.messages[end_i + 1]["role"] == "assistant"
-                ):
-                    end_i = end_i + 1
-
-        if start_i is not None and end_i is not None:
-            msg_ids_to_compress = [
-                st.session_state.messages[j]["msg_id"]
-                for j in range(start_i, end_i + 1)
-                if "msg_id" in st.session_state.messages[j]
-            ]
-            has_overlap, conflict_id = check_range_overlap(
-                st.session_state.compression_state, msg_ids_to_compress
-            )
-
-            count = end_i - start_i + 1
-            st.caption(f"将压缩 {count} 条消息 (第{start_rn}-{end_rn}轮)")
-
-            if has_overlap:
-                st.warning(f"⚠️ 所选区间与已有压缩区间 ({conflict_id}) 重叠，请调整范围。")
-            elif st.button("🚀 执行压缩", type="primary", use_container_width=True):
-                with st.spinner(f"正在使用 {comp_channel}/{comp_model} 压缩对话..."):
-                    try:
-                        summary = compress_messages_range(
-                            st.session_state.messages,
-                            start_i,
-                            end_i,
-                            comp_prompt,
-                            comp_channel,
-                            comp_model,
-                            st.session_state.api_configs,
-                        )
-                        add_compression_range(
-                            st.session_state.compression_state,
-                            msg_ids_to_compress,
-                            summary,
-                            comp_channel,
-                            comp_model,
-                            comp_prompt,
-                        )
-                        save_chat_history(
-                            current_save_file,
-                            st.session_state.messages,
-                            st.session_state.get("search_cache", {}),
-                        )
-                        st.toast(f"✅ 已压缩第{start_rn}-{end_rn}轮对话")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"压缩失败: {e}")
-
-    cs = st.session_state.compression_state
-    if cs.get("ranges"):
-        st.divider()
-        st.caption(f"已压缩 {len(cs['ranges'])} 个区间")
-        for r in cs["ranges"]:
-            with st.expander(f"📦 {len(r['msg_ids'])} 条消息"):
-                st.caption(f"模型: {r.get('model', 'N/A')}")
-                st.caption(f"提示词: {r.get('prompt', '')[:80]}...")
-                st.info(r["summary"])
-                if st.button(
-                    "🗑️ 取消此压缩",
-                    key=f"uncmp_{r['id']}",
-                    use_container_width=True,
-                ):
-                    remove_compression_range(
-                        st.session_state.compression_state, r["id"]
-                    )
-                    save_chat_history(
-                        current_save_file,
-                        st.session_state.messages,
-                        st.session_state.get("search_cache", {}),
-                    )
-                    st.rerun()
-    else:
-        st.caption("暂无压缩区间")
-
-    # --- 对话索引 ---
-    st.divider()
-    st.subheader("📋 对话索引")
-
-    idx_rounds = _get_round_mapping(st.session_state.messages)
-    if idx_rounds:
-        cs2 = st.session_state.compression_state
-        compressed_ids = get_compressed_msg_ids(cs2)
-
-        with st.expander("对话轮次导航", expanded=len(idx_rounds) <= 10):
-            i = 0
-            while i < len(idx_rounds):
-                rn, idx, preview = idx_rounds[i]
-                mid = st.session_state.messages[idx].get("msg_id", "")
-
-                if mid in compressed_ids:
-                    cur_range = None
-                    for r in cs2.get("ranges", []):
-                        if mid in r["msg_ids"]:
-                            cur_range = r
-                            break
-
-                    if cur_range:
-                        comp_rnds = []
-                        j = i
-                        while j < len(idx_rounds):
-                            crn, cidx, cprev = idx_rounds[j]
-                            cmid = st.session_state.messages[cidx].get("msg_id", "")
-                            if cmid in cur_range["msg_ids"]:
-                                comp_rnds.append((crn, cidx, cprev))
-                                j += 1
-                            else:
-                                break
-
-                        first_rn = comp_rnds[0][0]
-                        last_rn = comp_rnds[-1][0]
-                        with st.expander(f"📦 已压缩 (第{first_rn}-{last_rn}轮)"):
-                            for crn, cidx, cprev in comp_rnds:
-                                short = (
-                                    cprev[:30] + "..."
-                                    if len(cprev) > 30
-                                    else cprev
-                                )
-                                st.markdown(
-                                    f'<a href="#turn_{cidx}" title="{cprev}">第{crn}轮: {short}</a>',
-                                    unsafe_allow_html=True,
-                                )
-                            summ = cur_range.get("summary", "")
-                            st.info(
-                                summ[:150]
-                                + ("..." if len(summ) > 150 else "")
-                            )
-                        i = j
-                        continue
-
-                short = preview[:30] + "..." if len(preview) > 30 else preview
-                st.markdown(
-                    f'<a href="#turn_{idx}" title="{preview}">第{rn}轮: {short}</a>',
-                    unsafe_allow_html=True,
-                )
-                i += 1
-    else:
-        st.caption("暂无对话")
 
     st.divider()
     st.caption(f"🛡️ 纯净chat沙盒 V{__version__}")
