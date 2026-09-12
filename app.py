@@ -561,8 +561,6 @@ with st.sidebar:
             save_config(st.session_state.api_configs)
             st.rerun()
 
-    st.divider()
-
     # --- 上下文压缩（折叠，紧随案例属性区） ---
     _comp_has_ranges = bool(
         st.session_state.get("compression_state", {}).get("ranges", [])
@@ -797,7 +795,7 @@ with st.sidebar:
     else:
         st.caption("暂无对话")
 
-    # st.divider()
+    st.divider()
 
     web_search = st.toggle(
         "🌍 开启全局联网", value=st.session_state.api_configs.get("web_search", True)
