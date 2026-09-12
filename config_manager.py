@@ -67,6 +67,9 @@ def load_config():
         "last_model": "gemini-2.0-flash-thinking-exp",
         "web_search": True,
         "web_search_suggestion_enabled": False,  # 🔔 联网搜索建议开关（默认关闭）
+        "search_api_enabled": True,  # 🔎 搜索引擎开关（使用 Tavily/博查 API；关掉则 AI 自主上网直接用必应网页版）
+        "browse_enabled": False,  # 🤖 AI 自主上网开关（默认关闭，AI 自行决定搜索/打开网页）
+        "browse_max_rounds": 3,  # 🤖 AI 每回答一个问题最多上网次数（防烧钱上限）
         "system_prompt": "",
         "temperature": 0.7,
         "top_p": 0.9,
