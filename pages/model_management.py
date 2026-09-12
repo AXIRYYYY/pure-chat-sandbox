@@ -58,32 +58,6 @@ st.markdown(
 
 st.header("🤖 模型库管理")
 
-# 显示模型变更通知（新增和减少的模型，重新加载后依然保存）
-if st.session_state.model_changes_notification:
-    notification = st.session_state.model_changes_notification
-    col1, col2 = st.columns([20, 1])
-    with col1:
-        # 显示新增模型（用绿色成功框）
-        if notification["added"]:
-            st.success("🎉 发现新增模型！")
-            for platform, models in notification["added"].items():
-                with st.expander(f"✨ {platform} 新增 {len(models)} 个模型"):
-                    for model in models:
-                        st.write(f"• {model}")
-
-        # 显示减少模型（用黄色警告框）
-        if notification["removed"]:
-            st.warning("⚠️ 发现模型减少！")
-            for platform, models in notification["removed"].items():
-                with st.expander(f"📉 {platform} 减少 {len(models)} 个模型"):
-                    for model in models:
-                        st.write(f"• {model}")
-    with col2:
-        if st.button("✕", key="close_notification"):
-            st.session_state.model_changes_notification = None
-            st.rerun()
-    st.divider()
-
 st.subheader("🔑 联网搜索 Key 设置")
 try:
     with open("api_config.json", "r", encoding="utf-8") as f:
@@ -256,6 +230,31 @@ with st.expander("➕ 添加新的自定义接口", expanded=not cst):
             st.warning("请至少填写名称和 API Host")
 
 st.divider()
+
+# 显示模型变更通知（新增和减少的模型，重新加载后依然保存）
+if st.session_state.model_changes_notification:
+    notification = st.session_state.model_changes_notification
+    col1, col2 = st.columns([20, 1])
+    with col1:
+        # 显示新增模型（用绿色成功框）
+        if notification["added"]:
+            st.success("🎉 发现新增模型！")
+            for platform, models in notification["added"].items():
+                with st.expander(f"✨ {platform} 新增 {len(models)} 个模型"):
+                    for model in models:
+                        st.write(f"• {model}")
+
+        # 显示减少模型（用黄色警告框）
+        if notification["removed"]:
+            st.warning("⚠️ 发现模型减少！")
+            for platform, models in notification["removed"].items():
+                with st.expander(f"📉 {platform} 减少 {len(models)} 个模型"):
+                    for model in models:
+                        st.write(f"• {model}")
+    with col2:
+        if st.button("✕", key="close_notification"):
+            st.session_state.model_changes_notification = None
+            st.rerun()
 
 if st.button("🚀 获取最新模型列表", use_container_width=True):
     # 保存旧的模型列表
