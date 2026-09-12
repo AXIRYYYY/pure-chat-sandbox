@@ -110,6 +110,8 @@ copy api_config.example.json api_config.json
 streamlit run app.py
 ```
 
+Windows 用户也可直接双击 `启动沙盒.bat` 启动（脚本会自动检查 Streamlit 是否安装）。
+
 ### 4. 获取模型列表（首次使用必需）
 
 在已启动的应用中访问 **「模型库管理」** 页面（`/model_management`），点击 **获取最新模型列表** 从各平台拉取最新可用模型，勾选需要的模型后点击保存，此后即可在主页切换使用。
