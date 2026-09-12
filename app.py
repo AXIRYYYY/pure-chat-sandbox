@@ -282,6 +282,7 @@ with st.sidebar:
         on_change=change_workspace,
         format_func=lambda ws: f"{st.session_state.api_configs.get('workspace_titles', {}).get(ws, '未命名案例')} [{ws}]",
     )
+    st.caption("⚠️ 切换工作区后如页面空白，请刷新网页。")
 
     with st.expander("⚙️ 工作区管理"):
         new_ws_name = st.text_input("新增工作区名称", key="new_ws_input")
