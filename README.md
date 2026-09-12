@@ -2,23 +2,47 @@
 
 [![Version](https://img.shields.io/badge/version-5.4.1-blue.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.9+-green.svg)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/streamlit-1.30+-red.svg)](https://streamlit.io/)
+[![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 一个为审计、合规及深度研究设计的 LLM 交互实验室，支持 Gemini、SiliconFlow、DeepSeek 等多供应商通道，具备长效缓存、工作区隔离、多附件解析及智能联网搜索功能。
 
 ## 核心特性
 
-- **多模型多通道**: 深度集成 Google Gemini (支持 Context Cache)、SiliconFlow (聚合 DeepSeek, Qwen 等) 和 DeepSeek 原生平台，并可通过供应商注册表扩展更多 OpenAI 兼容通道。
-- **动态模型库**: 支持从各平台 API 自动获取最新模型列表，通过图形化界面启用/禁用模型，无需手动修改配置文件。
-- **联网搜索统一模块**: SiliconFlow 和 DeepSeek 平台共用同一套联网搜索逻辑，代码更精简，维护更便捷。
-- **模块化架构**: 高度解耦的后端服务，易于维护与扩展。
-- **审计级工作区**: 完整的案例隔离机制，每个工作区拥有独立的配置、提示词及对话历史。
-- **智能附件处理**: 自动解析 PDF (基于 PyMuPDF)、TXT、MD、HTML 等格式，支持超大文件物理备份。
-- **联网搜索集成**: 支持 Tavily / 博查(Bocha) 双搜索引擎，可切换，辅助实时联网搜索。
-- **长效缓存管理**: 可视化管理 Gemini 后台缓存，节省 Token 并提升长上下文响应速度。
-- **自动化命名**: 根据对话内容自动生成简洁的案例标题。
-- **多页面架构**: 采用 Streamlit Pages 实现模块化界面，扩展更灵活。
+### 多供应商与模型管理
+- **17+ 内置供应商 + 无限自定义**: 除 Gemini、SiliconFlow、DeepSeek 外，另有 OpenAI、阿里百炼、智谱、Kimi、MiniMax、Groq、OpenRouter、xAI、Ollama、火山、阶跃、Together、Mistral、OpenCode Zen 等预设，并可添加任意 OpenAI 兼容接口；通道按“已启用 + 有 Key + 有可用模型”自动过滤显示。
+- **双 API 路径**: Gemini 走原生 SDK（含 Context Cache），其余统一走 OpenAI 兼容路径。
+- **动态模型库**: 在「模型库管理」页一键拉取各平台最新模型列表，逐供应商报告成功/失败与模型增减通知，按平台勾选启用；支持“自定义…”手输任意模型 ID。
+
+### 工作区与命名
+- **审计级工作区**: 互相隔离的工作区，各自独立保存通道、模型、提示词、生成参数与对话历史，可新增（复制当前配置）与删除。
+- **自动命名**: 首轮对话后按内容生成简洁案例标题，可选命名通道与模型（默认关闭），也支持一键重新生成。
+
+### 对话与附件
+- **多格式附件**: 支持 `txt/md/py/json/csv/pdf/html`，PDF 经 PyMuPDF 解析并清洗文本污染，全部解析、全部物理备份，无大小截断；上传后展示解析详情（字符数/体积/类型）。
+- **重新生成**: 直接重新生成 / 编辑并重新生成，编辑时附件自动重挂载，时间戳按规则复用。
+- **草稿与中断恢复**: 生成中的消息双写内存与磁盘，浏览器刷新或手机端清理后不丢失；可删除整轮对话（连带清理反馈、搜索缓存与压缩区间），也可彻底销毁会话。
+
+### 联网搜索
+- **双引擎可切换**: Tavily / 博查(Bocha) 二选一，全局联网开关；搜索关键词提取提示词可在侧边栏编辑。
+- **提取模型跨平台自选**: 关键词提取可用与主对话不同平台的便宜模型；AI 可主动建议搜索关键词，一键同意即追加搜索并重新生成；也支持手动多次联网。
+- **搜索结果独立缓存**: 按消息 ID 缓存，不污染原始问题；重新生成与对比生成时复用缓存，不重复联网；失败信息跨页面保留展示。
+
+### 上下文压缩与对比
+- **非侵入式压缩**: 按轮次选择任意连续区间，自定义压缩提示词、通道与模型，摘要替换进上下文而原始消息完整保留，取消即恢复；自动检测区间重叠，删除消息时自清理。
+- **对比生成**: 同一条回答可并排 Tabs 对比多个模型的输出，复用原消息的搜索缓存，不污染线性历史与缓存前缀。
+- **对话索引导航**: 按用户消息分轮，hash 锚点跳转不触发页面重载，压缩段分组标注。
+
+### Gemini 缓存与 Gem 专区
+- **长效缓存管理**: 可视化查看 Gemini 后台缓存（ID、剩余寿命、命中状态），支持续期与废弃；可按任意消息位置创建缓存。
+- **Gem 专属区**: 固定 Prompt + 固定知识库，一键实例化并预建底层缓存；支持重置到初始态。
+- **思维链显示**: DeepSeek 推理过程实时展开，思考强度（low/medium/high）可调。
+
+### 可观测与审计
+- **Token 预估**: 一键预估当前上下文消耗（Gemini 精确计数，其余 tiktoken 估算）；每条回复附带时间、模型、耗时与 Token 明细。
+- **导入导出**: 导出 JSON（含完整元数据）/ Markdown；导入 JSON 覆盖恢复整个会话（含标题、提示词与参数）。
+- **反馈与审计**: 👍/👎 反馈落盘，操作记入 `audit_trail.jsonl`；确定性序列化保障缓存前缀一致；首次写对话文件自动备份。
+- **极客工具**: 底层 I/O 日志查看器（发往 API 的原始 payload）、Raw 源码模式、API 自动重连（指数退避，次数可配）。
 
 ## 项目结构
 
@@ -29,7 +53,7 @@
 ├── provider_registry.py      # 供应商注册表、OpenAI client 工厂
 ├── compression_engine.py     # 上下文压缩引擎
 ├── file_utils.py             # 文件解析服务 (PDF/TXT/HTML)
-├── token_utils.py            # Token 计算与估算 (Gemini/SiliconFlow)
+├── token_utils.py            # Token 计算与估算 (Gemini 精确 + 全 OpenAI 兼容估算)
 ├── chat_utils.py             # 对话历史、工作区管理 & 共用联网搜索
 ├── export_utils.py           # Markdown 导出功能
 ├── ai_models_fetcher.py      # 自动模型列表获取工具
