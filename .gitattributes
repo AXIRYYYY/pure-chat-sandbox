@@ -1,0 +1,3 @@
+# 文本文件统一入库为 LF，检出时按平台转换；bat 强制 CRLF（cmd 必需）
+* text=auto
+*.bat text eol=crlf

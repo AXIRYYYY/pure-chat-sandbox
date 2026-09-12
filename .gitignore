@@ -18,6 +18,7 @@
 
 # --- Git 自身 ---
 !.gitignore
+!.gitattributes
 
 # --- Python 源代码 ---
 !*.py
