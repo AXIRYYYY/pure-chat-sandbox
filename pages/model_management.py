@@ -408,7 +408,7 @@ if os.path.exists("available_models.json"):
 
     st.markdown("""
     联网搜索时，会先用一个 AI 模型从你的输入中**提取 1-3 个搜索关键词**，
-    再传给 Tavily 搜索引擎。你可以自由选择任一平台的廉价模型来执行此任务。
+    再传给当前选择的搜索引擎。你可以自由选择任一平台的廉价模型来执行此任务。
     """)
 
     # 加载当前的 api_config.json

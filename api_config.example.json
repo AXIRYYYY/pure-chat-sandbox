@@ -4,7 +4,6 @@
     "tavily": "YOUR_TAVILY_API_KEY",
     "deepseek": "YOUR_DEEPSEEK_API_KEY",
     "bocha": "YOUR_BOCHA_API_KEY",
-    "ds_free_api_key": "",
     "web_search": true,
     "last_choice": "DeepSeek",
     "last_model": "deepseek-v4-pro",
@@ -18,7 +17,6 @@
         "workspace_001": "Workspace 001",
         "workspace_draft": "Draft"
     },
-    "cache_ttl": 3600,
     "gem_instruction": "",
     "workspaces": [
         "workspace_default",

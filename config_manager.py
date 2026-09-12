@@ -90,6 +90,10 @@ def load_config():
             "SiliconFlow": "Qwen/Qwen2.5-72B-Instruct",
             "DeepSeek": "deepseek-chat",
         },
+        "web_search_extract_config": {},
+        "search_engine": "Tavily",
+        "reasoning_effort": "medium",
+        "compression_defaults": {},
     }
 
 
