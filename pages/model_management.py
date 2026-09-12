@@ -84,7 +84,7 @@ if st.session_state.model_changes_notification:
             st.rerun()
     st.divider()
 
-st.subheader("🔑 API Key 设置")
+st.subheader("🔑 联网搜索 Key 设置")
 try:
     with open("api_config.json", "r", encoding="utf-8") as f:
         api_config_keys = json.load(f)
@@ -93,27 +93,12 @@ except:
 
 col_key1, col_key2 = st.columns(2)
 with col_key1:
-    gemini_key = st.text_input(
-        "Gemini API Key",
-        value=api_config_keys.get("gemini", ""),
-        type="password",
-    )
-    sf_key = st.text_input(
-        "SiliconFlow API Key",
-        value=api_config_keys.get("siliconflow", ""),
-        type="password",
-    )
-with col_key2:
-    ds_key = st.text_input(
-        "DeepSeek API Key",
-        value=api_config_keys.get("deepseek", ""),
-        type="password",
-    )
     tavily_key = st.text_input(
         "Tavily Key (联网搜索用)",
         value=api_config_keys.get("tavily", ""),
         type="password",
     )
+with col_key2:
     bocha_key = st.text_input(
         "博查 Key (联网搜索用)",
         value=api_config_keys.get("bocha", ""),
@@ -122,9 +107,6 @@ with col_key2:
     )
 
 if st.button("💾 保存所有 API Key 与供应商配置", use_container_width=True, type="primary"):
-    api_config_keys["gemini"] = gemini_key
-    api_config_keys["siliconflow"] = sf_key
-    api_config_keys["deepseek"] = ds_key
     api_config_keys["tavily"] = tavily_key
     api_config_keys["bocha"] = bocha_key
 
@@ -181,8 +163,8 @@ for col_i in range(0, len(providers_list), 2):
             has_key = bool(current_key)
 
             type_badge = "🟢 Gemini" if info["type"] == "gemini" else "🔵 OpenAI"
-            with st.container(border=True):
-                st.markdown(f"**{info['name']}**  `{type_badge}`")
+            # 开关关闭的供应商折叠收起，启用的展开（expanded 按注册表状态重算）
+            with st.expander(f"**{info['name']}**  `{type_badge}`", expanded=enabled):
                 st.caption(info.get("description", ""))
                 if info.get("api_key_url"):
                     st.caption(f"[🔗 获取 API Key]({info['api_key_url']})")

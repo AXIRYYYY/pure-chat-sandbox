@@ -45,6 +45,14 @@ BUILTIN_PROVIDERS = {
         "description": "OpenCode 官方模型网关 (含免费模型: DeepSeek V4 Flash Free, MiMo-V2.5 Free 等)",
         "api_key_url": "https://opencode.ai/auth",
     },
+    "opencode-go": {
+        "name": "OpenCode Go",
+        "type": "openai",
+        "api_host": "https://opencode.ai/zen/go/v1",
+        "api_key_field": "opencode-go",
+        "description": "OpenCode 订阅制模型网关 (精选模型子集，与 Zen 同协议、地址与 Key 不同)",
+        "api_key_url": "https://opencode.ai/auth",
+    },
     "openai": {
         "name": "OpenAI",
         "type": "openai",
