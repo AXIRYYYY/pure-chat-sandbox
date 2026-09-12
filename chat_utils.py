@@ -343,7 +343,10 @@ def change_workspace():
         try:
             with open(save_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                st.session_state.messages = data if isinstance(data, list) else []
+                # 🌟 使用 normalize_messages 兼容旧版数组与新版包装对象
+                st.session_state.messages = normalize_messages(data)
+                if isinstance(data, dict) and "search_cache" in data:
+                    st.session_state.search_cache = data["search_cache"]
         except:
             st.session_state.messages = []
     else:

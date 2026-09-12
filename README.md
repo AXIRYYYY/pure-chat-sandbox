@@ -1,6 +1,6 @@
 # 纯净 Chat 沙盒 (Pure Chat Sandbox)
 
-[![Version](https://img.shields.io/badge/version-5.4.4-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.4.5-blue.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.9+-green.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
