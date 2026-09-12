@@ -72,6 +72,7 @@ from compression_engine import (
     check_range_overlap,
     cleanup_deleted_messages,
 )
+import browse_tools  # 🤖 AI 自主上网工具集
 
 
 # --- 工具函数：规范化Gemini模型名称 ---
@@ -111,7 +112,7 @@ def _get_round_mapping(messages):
 
 
 # --- 1. 版本号定义 ---
-__version__ = "5.4.5"
+__version__ = "5.5.0"
 
 # --- 2. 页面与状态管理 ---
 st.set_page_config(
@@ -813,15 +814,59 @@ with st.sidebar:
     )
     st.session_state.api_configs["web_search"] = web_search
 
-    # 🔍 搜索引擎选择（Tavily / 博查）
+    # 🔎 搜索引擎开关（是否允许使用 Tavily/博查 API）
+    search_api_enabled = st.toggle(
+        "🔎 搜索引擎",
+        value=st.session_state.api_configs.get("search_api_enabled", True),
+        help="允许使用 Tavily/博查 API 搜索。\n"
+        "关闭后：AI 自主上网的搜索将直接使用「必应网页版」（不消耗 Tavily/博查额度）；"
+        "老模式联网搜索停用。",
+        disabled=not web_search,
+    )
+    st.session_state.api_configs["search_api_enabled"] = search_api_enabled
+
     search_engine = st.radio(
         "🔎 搜索引擎",
         ["Tavily", "博查(Bocha)"],
         index=0 if st.session_state.api_configs.get("search_engine", "Tavily") == "Tavily" else 1,
-        help="Tavily 是默认搜索引擎；博查(Bocha) 是国产搜索引擎，支持更丰富的搜索参数",
-        disabled=not web_search,
+        help="Tavily 是默认搜索引擎；博查(Bocha) 是国产搜索引擎，支持更丰富的搜索参数。"
+        "仅「搜索引擎」开关开启时生效；AI 自主上网模式不受此选择影响。",
+        disabled=not (web_search and search_api_enabled),
     )
     st.session_state.api_configs["search_engine"] = search_engine
+
+    # 🤖 AI 自主上网（AI 自行决定是否搜索/打开网页，代替"先搜索后问答"）
+    browse_enabled = st.toggle(
+        "🤖 AI 自主上网",
+        value=st.session_state.api_configs.get("browse_enabled", False),
+        help="开启后 AI 会自行判断是否需要上网：自己选关键词搜索、自己决定打开哪些网页，"
+        "直到信息足够才回答。\n"
+        "「搜索引擎」开关开启时按 Tavily→博查→必应网页版降级；关闭时直接用必应网页版（无需 Key）。",
+        disabled=not web_search,
+    )
+    st.session_state.api_configs["browse_enabled"] = browse_enabled
+    if browse_enabled:
+        st.number_input(
+            "🤖 每问最多上网次数",
+            min_value=1,
+            max_value=10,
+            value=int(
+                st.session_state.api_configs.get("browse_max_rounds", 3)
+            ),
+            key="browse_max_rounds_input",
+            help="AI 每回答一个问题最多上网几次（防止烧钱），默认 3 次",
+        )
+        st.session_state.api_configs["browse_max_rounds"] = int(
+            st.session_state.browse_max_rounds_input
+        )
+
+    # ⚠️ 横幅：全局联网开但「搜索引擎」与「AI 自主上网」均关 → 联网搜索停用
+    #    （放在三个开关之后，用本次 rerun 的最新值判断，避免读到旧状态）
+    if web_search and not search_api_enabled and not browse_enabled:
+        st.warning(
+            "⚠️ 全局联网已开启，但「🔎 搜索引擎」与「🤖 AI 自主上网」均未开启，"
+            "联网搜索已停用。请至少开启其中一个，否则将仅使用本地知识回答。"
+        )
 
     # 🔍 联网搜索关键词提取提示词 - 显性化展示与编辑
     with st.expander("🔍 联网搜索关键词提取提示词"):
