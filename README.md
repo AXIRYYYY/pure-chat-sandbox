@@ -111,7 +111,6 @@ copy api_config.example.json api_config.json
 | `tavily` | [Tavily](https://tavily.com/) |
 | `deepseek` | [DeepSeek](https://platform.deepseek.com/) |
 | `bocha` | [博查](https://open.bocha.cn) |
-| `siliconflow` | [SiliconFlow](https://siliconflow.cn/) |
 
 ### 3. 启动应用
 

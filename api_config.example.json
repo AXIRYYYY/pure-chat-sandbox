@@ -1,6 +1,5 @@
 {
     "gemini": "YOUR_GEMINI_API_KEY",
-    "siliconflow": "YOUR_SILICONFLOW_API_KEY",
     "tavily": "YOUR_TAVILY_API_KEY",
     "deepseek": "YOUR_DEEPSEEK_API_KEY",
     "bocha": "YOUR_BOCHA_API_KEY",
