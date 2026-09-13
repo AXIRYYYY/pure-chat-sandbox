@@ -5,7 +5,7 @@
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-一个为审计、合规及深度研究设计的 LLM 交互实验室，支持 Gemini、SiliconFlow、DeepSeek 等多供应商通道，具备长效缓存、工作区隔离、多附件解析及智能联网搜索功能。
+一个为审计、合规及深度研究设计的 LLM 交互实验室，支持 18 个内置供应商与任意自定义 OpenAI 兼容通道，具备长效缓存、工作区隔离、多附件解析及智能联网搜索功能。
 
 ## 核心特性
 
@@ -18,7 +18,7 @@
 - **缓存前缀稳定保障**: 确定性序列化 + SHA 审计，Gemini Context Cache 命中率不受编辑与对比影响。
 
 ### 多供应商与模型管理
-- **17+ 内置供应商 + 无限自定义**: 除 Gemini、SiliconFlow、DeepSeek 外，另有 OpenAI、阿里百炼、智谱、Kimi、MiniMax、Groq、OpenRouter、xAI、Ollama、火山、阶跃、Together、Mistral、OpenCode Zen、OpenCode Go（订阅网关）等预设，并可添加任意 OpenAI 兼容接口；通道按“已启用 + 有 Key + 有可用模型”自动过滤显示。
+- **18 内置供应商 + 无限自定义**: 内置 Gemini、OpenAI、DeepSeek、SiliconFlow、阿里百炼、智谱、Kimi、MiniMax、Groq、OpenRouter、xAI、Ollama、火山、阶跃、Together、Mistral、OpenCode Zen、OpenCode Go（订阅网关），并可添加任意 OpenAI 兼容接口；通道按“已启用 + 有 Key + 有可用模型”自动过滤显示。
 - **双 API 路径**: Gemini 走原生 SDK（含 Context Cache），其余统一走 OpenAI 兼容路径。
 - **动态模型库**: 在「模型库管理」页一键拉取各平台最新模型列表，逐供应商报告成功/失败与模型增减通知，按平台勾选启用；支持“自定义…”手输任意模型 ID。
 
